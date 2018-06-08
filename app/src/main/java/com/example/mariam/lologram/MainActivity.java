@@ -21,7 +21,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.MediaController;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.example.mariam.lologram.util.BitmapUtils;
 import com.karumi.dexter.Dexter;
@@ -49,9 +51,13 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
 
     public static final int SELECT_GALLERY_IMAGE = 101;
     private static final int REQUEST_IMAGE_CAPTURE = 102;
+    private static final int REQUEST_VIDEO_CAPTURE = 103 ;
 
     @BindView(R.id.image_preview)
     ImageView imagePreview;
+
+    @BindView(R.id.video_preview)
+    VideoView videoPreview;
 
     @BindView(R.id.tabs)
     TabLayout tabLayout;
@@ -98,6 +104,15 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
 
         setupViewPager(viewPager);
         tabLayout.setupWithViewPager(viewPager);
+
+        videoPreview.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (videoPreview.isPlaying()) videoPreview.stopPlayback();
+                else videoPreview.start();
+            }
+        });
+
     }
 
     private void setupViewPager(ViewPager viewPager) {
@@ -221,17 +236,24 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
-        if (id == R.id.action_gallery) {
-            openImageFromGallery();
-            return true;
-        }
+//        if (id == R.id.action_gallery) {
+//            openImageFromGallery();
+//            return true;
+//        }
 
         if (id == R.id.action_camera) {
+            imagePreview.setVisibility(View.VISIBLE);
+            videoPreview.setVisibility(View.GONE);
             openImageFromCamera();
             return true;
         }
 
-
+        if (id == R.id.action_video) {
+            imagePreview.setVisibility(View.GONE);
+            videoPreview.setVisibility(View.VISIBLE);
+            openVideoFromCamera();
+            return true;
+        }
 
         if (id == R.id.action_save) {
             saveImageToGallery();
@@ -244,6 +266,8 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == RESULT_OK && requestCode == SELECT_GALLERY_IMAGE) {
+            imagePreview.setVisibility(View.VISIBLE);
+            videoPreview.setVisibility(View.GONE);
             Bitmap bitmap = BitmapUtils.getBitmapFromGallery(this, data.getData(), 800, 800);
 
             // clear bitmap memory
@@ -282,6 +306,16 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
 
             // render selected image thumbnails
             filtersListFragment.prepareThumbnail(originalImage);
+        }else if (resultCode == RESULT_OK && requestCode == REQUEST_VIDEO_CAPTURE) {
+            imagePreview.setVisibility(View.GONE);
+            videoPreview.setVisibility(View.VISIBLE);
+            Uri videoUri = data.getData();
+            MediaController mediaController = new MediaController(this);
+            mediaController.setAnchorView(videoPreview);
+            videoPreview.setMediaController(mediaController);
+            videoPreview.setVideoURI(videoUri);
+            
+
         }
     }
 
@@ -306,6 +340,28 @@ public class MainActivity extends AppCompatActivity implements FiltersListFragme
                 }).check();
     }
 
+    private void openVideoFromCamera() {
+        Dexter.withActivity(this).withPermissions(Manifest.permission.CAMERA,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                .withListener(new MultiplePermissionsListener() {
+                    @Override
+                    public void onPermissionsChecked(MultiplePermissionsReport report) {
+                        if (report.areAllPermissionsGranted()) {
+                            Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+                            if (takeVideoIntent.resolveActivity(getPackageManager()) != null) {
+                                startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);
+                            }
+                        } else {
+                            Toast.makeText(getApplicationContext(), "Permissions are not granted!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onPermissionRationaleShouldBeShown(List<PermissionRequest> permissions, PermissionToken token) {
+                        token.continuePermissionRequest();
+                    }
+                }).check();
+    }
 
     private void openImageFromCamera() {
         Dexter.withActivity(this).withPermissions(Manifest.permission.CAMERA,

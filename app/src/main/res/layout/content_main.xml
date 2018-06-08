@@ -15,6 +15,12 @@
         android:layout_height="360dp"
         android:scaleType="centerCrop" />
 
+    <VideoView
+        android:visibility="gone"
+        android:id="@+id/video_preview"
+        android:layout_width="match_parent"
+        android:layout_height="360dp"/>
+
     <com.example.mariam.lologram.util.NonSwipeableViewPager
         android:id="@+id/viewpager"
         android:layout_width="match_parent"
